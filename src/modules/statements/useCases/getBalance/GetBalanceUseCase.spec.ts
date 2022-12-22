@@ -22,6 +22,7 @@ describe('Get Balance', () => {
 
   it('should return the balance and the statements of the user', async () => {
     const createdUser = await usersRepository.create({ name: 'Test', email: 't@t.co', password: (await hash('1234', 8)) });
+    const createdReceiver = await usersRepository.create({ name: 'Receiver', email: 'tt@t.co', password: (await hash('1234', 8)) });
 
     await statementsRepository.create({
       user_id: createdUser.id as string,
@@ -37,12 +38,28 @@ describe('Get Balance', () => {
       type: OperationType.WITHDRAW
     });
 
+    await statementsRepository.create({
+      user_id: createdReceiver.id as string,
+      sender_id: createdUser.id as string,
+      amount: 20,
+      description: 'test',
+      type: OperationType.TRANSFER
+    });
+
+    await statementsRepository.create({
+      user_id: createdUser.id as string,
+      sender_id: createdReceiver.id as string,
+      amount: 10,
+      description: 'test',
+      type: OperationType.TRANSFER
+    });
+
     const result = await getBalanceUseCase.execute({
       user_id: createdUser.id as string
     });
 
-    expect(result.balance).toBe(20);
-    expect(result.statement.length).toBe(2);
+    expect(result.balance).toBe(10);
+    expect(result.statement.length).toBe(4);
 
   });
 

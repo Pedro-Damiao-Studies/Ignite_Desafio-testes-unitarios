@@ -52,6 +52,28 @@ describe('Create Statement', () => {
     expect(result).toHaveProperty('id');
   });
 
+  it('should create a statement of type transfer', async () => {
+    const createdUser = await usersRepository.create({ name: 'Test', email: 't@t.co', password: (await hash('1234', 8)) });
+    const createdSender = await usersRepository.create({ name: 'Sender', email: 'tt@t.co', password: (await hash('1234', 8)) });
+
+    await createStatementUseCase.execute({
+      user_id: createdSender.id as string,
+      type: OperationType.DEPOSIT,
+      amount: 100,
+      description: 'test operation',
+    });
+
+    const result = await createStatementUseCase.execute({
+      user_id: createdUser.id as string,
+      sender_id: createdSender.id as string,
+      type: OperationType.TRANSFER,
+      amount: 80,
+      description: 'test operation',
+    });
+
+    expect(result).toHaveProperty('id');
+  });
+
   it('should not be able to create a statement when the user does not exists', async () => {
 
     const calledFunction = async () => {
@@ -62,7 +84,23 @@ describe('Create Statement', () => {
         description: 'test operation',
       });
     }
-    expect(calledFunction).rejects.toBeInstanceOf(CreateStatementError.UserNotFound);
+    await expect(calledFunction).rejects.toBeInstanceOf(CreateStatementError.UserNotFound);
+  });
+
+
+  it('should not be able to create a statement when the sender does not exists', async () => {
+    const createdUser = await usersRepository.create({ name: 'Test', email: 't@t.co', password: (await hash('1234', 8)) });
+
+    const calledFunction = async () => {
+      await createStatementUseCase.execute({
+        user_id: createdUser.id as string,
+        sender_id: '1234',
+        type: OperationType.TRANSFER,
+        amount: 50,
+        description: 'test operation',
+      });
+    }
+    await expect(calledFunction).rejects.toBeInstanceOf(CreateStatementError.UserNotFound);
   });
 
   it('should not be able to create a statement of type withdraw when have no founds', async () => {
@@ -76,7 +114,23 @@ describe('Create Statement', () => {
         description: 'test operation',
       });
     }
-    expect(calledFunction).rejects.toBeInstanceOf(CreateStatementError.InsufficientFunds);
+    await expect(calledFunction).rejects.toBeInstanceOf(CreateStatementError.InsufficientFunds);
+  });
+
+  it('should not be able to create a statement of type transfer when have no founds', async () => {
+    const createdUser = await usersRepository.create({ name: 'Test', email: 't@t.co', password: (await hash('1234', 8)) });
+    const createdSender = await usersRepository.create({ name: 'Sender', email: 'tt@t.co', password: (await hash('1234', 8)) });
+
+    const calledFunction = async () => {
+      await createStatementUseCase.execute({
+        user_id: createdUser.id as string,
+        sender_id: createdSender.id as string,
+        type: OperationType.TRANSFER,
+        amount: 80,
+        description: 'test operation',
+      });
+    }
+    await expect(calledFunction).rejects.toBeInstanceOf(CreateStatementError.InsufficientFunds);
   });
 
 
